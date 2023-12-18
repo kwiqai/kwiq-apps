@@ -7,17 +7,20 @@ def update_file(file_path, updates):
     Update the file at the given path based on the provided updates.
     """
     with open(file_path, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
+        content = file.read()
+
+    # Sort updates in reverse order of start_pos to avoid offset issues
+    updates.sort(key=lambda x: x['start_pos'], reverse=True)
 
     for update in updates:
-        line_num = update['line']
-        for item in update['items']:
-            original_text = item['original_text']
-            translated_text = item['translated_text']
-            lines[line_num - 1] = lines[line_num - 1].replace(original_text, translated_text)
+        original_text = update['original_text']
+        translated_text = update['translated_text']
+
+        # Replace only the first occurrence of the original text
+        content = content.replace(original_text, translated_text, 1)
 
     with open(file_path, 'w', encoding='utf-8') as file:
-        file.writelines(lines)
+        file.write(content)
 
 
 def apply_translations(map_file_path):

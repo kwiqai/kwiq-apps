@@ -21,4 +21,4 @@ MODULE_NAME=$(basename "$ABS_MODULE_PATH" .py)
 # Run the Docker container with the protobuf module volume mounted
 docker run -it --rm \
     -v "$ABS_MODULE_DIR":/code/protobuf_module \
-    protobuf-decoder python proto_decoder.py decode "protobuf_module.$MODULE_NAME" "$MESSAGE_CLASS" "$HEX_DATA"
+    protobuf-decoder python proto_decoder.py decode -m "protobuf_module.$MODULE_NAME" -c "$MESSAGE_CLASS" -d "$HEX_DATA" --grpc
