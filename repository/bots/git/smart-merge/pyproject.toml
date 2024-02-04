@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "smart-merge"
+version = "0.1.0"
+description = ""
+authors = ["Shailendra Sharma <shailendra.sharma@gmail.com>"]
+readme = "README.md"
+packages = [{include = "smart_merge"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+gitpython = "^3.1.41"
+pydantic = "^2.6.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
