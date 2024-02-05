@@ -4,6 +4,8 @@ from workflow.step import Step, OutputModelType, InputModelType
 
 
 class RunCommand(Step):
+    name: str = "run-command"
+    silent: bool = False
 
     @property
     def input_model(self) -> InputModelType:
@@ -18,7 +20,7 @@ class RunCommand(Step):
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
         output, _ = process.communicate()
         output = output.decode().strip()
-        if process.returncode != 0:
+        if process.returncode != 0 and not self.silent:
             error_msg = output
             print(f'Error: {error_msg}')
             raise subprocess.CalledProcessError(process.returncode, command, error_msg)

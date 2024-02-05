@@ -1,4 +1,7 @@
 original_word,renamed_word
+github.com/deepflowio/deepflow/server,github.com/nebulaiq/nebulaiq_telemetry/server
+github.com/deepflowio/deepflow/message,github.com/nebulaiq/nebulaiq_telemetry/proto
+github.com/deepflowio/deepflow/cli,github.com/nebulaiq/nebulaiq_telemetry/cli
 _deepflow_,_nebulaiq_telemetry_
 DEEPFLOW_AGENT_BEACON,NEBULAIQ_TELEMETRY_AGENT_BEACON
 deepflow_agent_collect_sender,nebulaiq_telemetry_agent_collect_sender
@@ -38,8 +41,8 @@ deepflow_system_custom_field,nebulaiq_telemetry_system_custom_field
 DEEPFLOW_SYSTEM_DB,NEBULAIQ_TELEMETRY_SYSTEM_DB
 deepflow_system_log__0_,nebulaiq_telemetry_system_log__0_
 DEEPFLOW_SYSTEM_TABLE,NEBULAIQ_TELEMETRY_SYSTEM_TABLE
-deepflow_system,NEBULAIQ_TELEMETRY_SYSTEM
-DEEPFLOW_SYSTEM,nebulaiq_telemetry_system
+deepflow_system,nebulaiq_telemetry_system
+DEEPFLOW_SYSTEM,NEBULAIQ_TELEMETRY_SYSTEM
 DEEPFLOW_TOOL,NEBULAIQ_TELEMETRY_TOOL
 deepflow-agent_,nebulaiq-agent_
 deepflow-agent_docker,nebulaiq-agent_docker

@@ -35,6 +35,7 @@ class InputModel(BaseModel):
 
 
 class ExtractWords(Step):
+    name: str = "extract-words"
 
     @property
     def input_model(self) -> InputModelType:

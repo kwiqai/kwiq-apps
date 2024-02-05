@@ -54,15 +54,17 @@ def setup_git_repo(merge_dir: Path, temp_dir: Path, repo_infos: Dict[str, RepoIn
         RunCommand().execute(f'git commit -m "{branch_name} version"')
 
         # Clean up temporary clone
-        shutil.rmtree(temp_clone_dir)
+        # shutil.rmtree(temp_clone_dir)
 
 
 class InputDataModel(BaseModel):
-    output_dir: str
+    output_dir: Path
     repo_infos: Dict[str, RepoInfo]
 
 
 class SetupThreeWayMerge(Step):
+    name: str = "setup-three-way-merge"
+
     @property
     def input_model(self) -> InputModelType:
         return InputDataModel
@@ -73,7 +75,7 @@ class SetupThreeWayMerge(Step):
 
     def fn(self, data: InputDataModel):
         # Inputs
-        base_dir = Path(data.output_dir)
+        base_dir = data.output_dir
         merge_dir = (base_dir / "merge_dir").resolve()
         temp_dir = (base_dir / "temp_dir").resolve()
 

@@ -19,7 +19,7 @@ InputModelType = Union[Type[BaseModel], type, None]
 OutputModelType = Union[Type[BaseModel], type, None]
 
 
-class Step(ABC):
+class Step(ABC, BaseModel):
     name: str
 
     @property

@@ -23,17 +23,18 @@ def parse_and_save_output(output, merge_output_file, conflict_output_file):
 
 
 class ApplyThreeWayMerge(Step):
+    name: str = "apply-three-way-merge"
+
     @property
     def input_model(self) -> InputModelType:
-        return str
+        return Path
 
     @property
     def output_model(self) -> OutputModelType:
         return None
 
-    def fn(self, output_dir: str):
+    def fn(self, base_dir: Path):
         # Inputs
-        base_dir = Path(output_dir)
         merge_dir = (base_dir / "merge_dir").resolve()
         os.chdir(merge_dir)
         RunCommand().execute('git checkout local')
@@ -43,5 +44,5 @@ class ApplyThreeWayMerge(Step):
         # Run git merge
         branch_name = 'remote'
         print(f'Merging {branch_name} with local branch')
-        output = RunCommand().execute(f'git merge {branch_name}')
+        output = RunCommand(silent=True).execute(f'git merge {branch_name}')
         parse_and_save_output(output, merge_output_file, conflict_output_file)

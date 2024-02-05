@@ -60,6 +60,7 @@ class InputModel(BaseModel):
 
 
 class ApplyRenames(Step):
+    name: str = "apply-renames"
 
     @property
     def input_model(self) -> InputModelType:
