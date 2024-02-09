@@ -1,0 +1,4 @@
+requests~=2.31.0
+pydantic~=2.6.1
+setuptools~=68.2.2
+gitignore_parser~=0.1.11

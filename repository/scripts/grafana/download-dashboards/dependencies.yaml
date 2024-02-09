@@ -1,4 +1,0 @@
-kind: python
-version: 3.10
-dependencies:
-  - requests@2.31.0
