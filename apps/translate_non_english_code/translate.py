@@ -1,55 +1,55 @@
-import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+
+import yaml
 
 from kwiq.core.flow import Flow
 from kwiq.task.google_translate import GoogleTranslate
-from kwiq.task.json_formatter import JsonFormatter
 
 
 class Translate(Flow):
     name: str = "translate"
 
-    def fn(self, input_map_path: Path, translated_map_path: Path) -> Any:
-        google_translator = GoogleTranslate()
+    def fn(self, input_path: Path, output_path: Path, translation_cache_path: Optional[Path]) -> Any:
+        google_translator = GoogleTranslate(translation_cache_path=translation_cache_path)
 
         # Load the original map
-        with open(input_map_path, 'r', encoding='utf-8') as file:
-            input_map = json.load(file)
+        with open(input_path, 'r', encoding='utf-8') as file:
+            input_map = yaml.full_load(file)
 
-        # Open the error log file
-        with open(translated_map_path, 'w+', encoding='utf-8') as output_file:
-            output_file.truncate()
-            output_file.write('[')  # Start of JSON array
+        output_map = []
+        # Load the translated map
+        for i, file_entry in enumerate(input_map):
+            output_map_entries = []
+            for j, input_entry in enumerate(file_entry['map']):
+                if 'translation_input' in input_entry and input_entry['translation_input']:
+                    translation_input = input_entry['translation_input']
+                    translated_text = google_translator.execute(text=translation_input)
+                    if translated_text is not None:
+                        input_entry['translated_text'] = translated_text
 
-            # Load the translated map
-            for i, file_entry in enumerate(input_map):
-                if i > 0:
-                    output_file.write(',')  # Separate JSON objects in the array
+                    if 'chunks' in input_entry and input_entry['chunks']:
+                        chunks = input_entry['chunks']
+                        output_chunks = []
+                        for chunk in chunks:
+                            translated_chunk = google_translator.execute(text=chunk)
+                            if translated_chunk is not None:
+                                output_chunks.append({
+                                    'original': chunk,
+                                    'translated': translated_chunk
+                                })
 
-                # Dump the file entry
-                json.dump({"file": file_entry["file"], "map": []}, output_file, indent=None, ensure_ascii=False)
-                output_file.flush()  # Flush to write to file immediately
+                        input_entry['chunks'] = output_chunks
 
-                for j, input_entry in enumerate(file_entry['map']):
-                    if 'translated_text' in input_entry and input_entry['translated_text']:
-                        translated_text = input_entry['translated_text']
-                    elif 'translation_input' in input_entry and input_entry['translation_input']:
-                        translation_input = input_entry['translation_input']
-                        translated_text = google_translator.execute(text=translation_input)
+                output_map_entries.append(input_entry)
 
-                    input_entry['translated_text'] = translated_text
-                    output_file.seek(0, 2)  # Go to the end of the file
-                    end_position = output_file.tell()  # Get the position at the end
-                    position_second_to_last = end_position - 2  # Calculate the position two characters before the end
-                    output_file.seek(position_second_to_last, 0)  # Seek to that position
-                    output_file.truncate()  # Remove the last character (']')
-                    if j > 0:
-                        output_file.write(',')  # Separate JSON objects in the array
-                    json.dump(input_entry, output_file, indent=None, ensure_ascii=False)  # Dump the updated file entry
-                    output_file.write(']}')  # End of JSON array
-                    output_file.flush()  # Flush to write to file immediately
+            output_map.append({
+                "file": file_entry["file"],
+                "map": output_map_entries
+            })
 
-            output_file.write(']')  # Close the JSON array
+        with open(output_path, 'w+', encoding='utf-8') as output_file:
+            yaml.dump(output_map, output_file, allow_unicode=True, default_style='', default_flow_style=False)
 
-        JsonFormatter().execute(input_file_path=translated_map_path)
+        google_translator.close()
+        print(f"Successfully translated input and written output to: {output_path}")

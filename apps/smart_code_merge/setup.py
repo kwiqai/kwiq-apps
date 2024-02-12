@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from kwiq.core.flow import Flow
 from kwiq.task.setup_3_way_merge import MergeRepoInfos, RepoInfo, SetupThreeWayMerge
@@ -11,6 +12,10 @@ class Setup(Flow):
 
     def fn(self, config: AppConfig) -> None:
         working_dir = config.working_dir
+        print(f"Cleaning directory: {working_dir}")
+        shutil.rmtree(working_dir, ignore_errors=True)
+
+        os.makedirs(working_dir, exist_ok=True)
 
         # # step 1: setup 3 way merge for all projects
         for project in config.projects:

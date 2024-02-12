@@ -32,5 +32,5 @@ class Commit(Flow):
                                     filter=lambda i: i == ".git")
 
             RunCommand().execute(command='git add .')
-            RunCommand().execute(command=f'git commit -m "{target_branch_name} version"')
+            RunCommand().execute(command=f'git commit --allow-empty -m "{target_branch_name} version"')
             RunCommand().execute(command=f'git push origin {target_branch_name}')

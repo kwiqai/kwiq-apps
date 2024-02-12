@@ -23,7 +23,7 @@ class PrepareTransformation(Flow):
         for project in config.projects:
             project_directory = (working_dir / f"__{project.key}" / "merge_dir").resolve()
             os.chdir(project_directory)
-            RunCommand().execute(command="git checkout local")
+            # RunCommand().execute(command="git checkout local")
             words = ExtractWords().execute(words_regex=config.rename_words_regex, search_directory=project_directory)
             unique_words = unique_words.union(words)
 

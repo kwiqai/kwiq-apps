@@ -1,14 +1,14 @@
-import json
 import os
 import re
 from pathlib import Path
 from typing import Any
 
 import yaml
-from gitignore_parser import parse_gitignore
 
 from kwiq.core.flow import Flow
-from translate_non_english_code.utils import replace_full_width_chars, is_english_or_technical, LANG_PATTERNS
+from kwiq.task.gitignore_matcher import GitIgnoreMatcher
+from translate_non_english_code.utils import replace_full_width_chars, is_english_or_technical, LANG_PATTERNS, \
+    WHOLE_LINE_PATTERN, find_non_english_chunks
 
 # 'multi_line_comment', 'multi_line_string',
 PATTERN_CHECK_SEQUENCE = ['single_line_comment', 'single_line_string']
@@ -22,20 +22,17 @@ class PrepareForTranslation(Flow):
 
     def fn(self, search_directory: Path, output_file: Path) -> Any:
         project_map = []
-        gitignore_path = search_directory / '.gitignore'
-        gitignore_matches = None
-        if gitignore_path.exists():
-            gitignore_matches = parse_gitignore(gitignore_path)
+        gitignore_matcher = GitIgnoreMatcher(base_dir=search_directory)
 
         """Process files in the directory, ignoring those that match .gitignore patterns."""
         for root, dirs, files in os.walk(search_directory):
             # Filter ignored directories
             dirs[:] = [d for d in dirs if not d.startswith('.')
-                       and (gitignore_matches is None or not gitignore_matches(os.path.join(root, d)))]
+                       and not gitignore_matcher.execute(file_path=os.path.join(root, d))]
 
             for file in files:
                 file_path = os.path.join(root, file)
-                if not file.startswith('.') and (gitignore_matches is None or not gitignore_matches(file_path)):
+                if not file.startswith('.') and not gitignore_matcher.execute(file_path=file_path):
                     # Process file
                     file_ext = os.path.splitext(file)[1]
                     file_path = os.path.join(root, file)
@@ -74,6 +71,7 @@ class PrepareForTranslation(Flow):
                 # Conditionally add fields if they are not None
                 if entry.get('translation_input') is not None:
                     aggregated_map[original_text]['translation_input'] = entry['translation_input']
+                    aggregated_map[original_text]['chunks'] = entry['chunks']
                 if entry.get('translated_text') is not None:
                     aggregated_map[original_text]['translated_text'] = entry['translated_text']
 
@@ -92,7 +90,8 @@ class PrepareForTranslation(Flow):
             non_english_map_entry = {
                 'position': line_number,
                 'original_text': original_text,
-                'translation_input': processed_text
+                'translation_input': processed_text,
+                'chunks': find_non_english_chunks(processed_text),
             }
         elif text != processed_text:
             non_english_map_entry = {
@@ -146,30 +145,9 @@ class PrepareForTranslation(Flow):
                 if '|' in stripped_line:  # Check for table row
                     columns = [col.strip() for col in stripped_line.split('|')]
                     for col in columns:
-                        # result = process_regular_text(line_number, col)
-                        # if result:
-                        #     non_english_map.append(result)
                         PrepareForTranslation.process_markdown_line(line_number, col, non_english_map)
                 else:
-                    # # Process non-table, non-URL lines
-                    # result = process_regular_text(line_number, stripped_line)
-                    # if result:
-                    #     non_english_map.append(result)
                     PrepareForTranslation.process_markdown_line(line_number, stripped_line, non_english_map)
-
-                # # Check for Markdown URL titles
-                # url_titles = re.findall(r'\[([^]]+)]\([^)]+\)', stripped_line)
-                # if url_titles:
-                #     for title in url_titles:
-                #         result = process_regular_text(line_number, title)
-                #         if result:
-                #             non_english_map.append(result)
-                #
-                # else:
-                #     # Process non-table, non-URL lines
-                #     result = process_regular_text(line_number, stripped_line)
-                #     if result:
-                #         non_english_map.append(result)
 
         return PrepareForTranslation.aggregate_data(non_english_map)
 
@@ -194,38 +172,49 @@ class PrepareForTranslation(Flow):
         non_english_map = []
 
         with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
+            line_number = 0
+            for content in file:
+                line_number += 1
+                for pattern_type in PATTERN_CHECK_SEQUENCE:
+                    for pattern in patterns.get(pattern_type, []):
+                        while True:
+                            content, match = cls.match_pattern_for_code_file(content,
+                                                                             line_number,
+                                                                             non_english_map,
+                                                                             pattern)
+                            if not match:
+                                break
 
-        for pattern_type in PATTERN_CHECK_SEQUENCE:
-            for pattern in patterns.get(pattern_type, []):
-                while True:
-                    match = re.search(pattern, content, re.DOTALL)
-                    if match:
-                        stripped_line = match.group().strip()
-                        lines_without_full_width_chars = replace_full_width_chars(stripped_line)
-                        if lines_without_full_width_chars and not is_english_or_technical(
-                                lines_without_full_width_chars):
-                            non_english_map.append(
-                                {
-                                    'position': {
-                                        'start_pos': match.start(),
-                                        'end_pos': match.end(),
-                                        'type': pattern_type,
-                                    },
-                                    'original_text': stripped_line,
-                                    'translation_input': lines_without_full_width_chars
-                                })
-                        elif stripped_line != lines_without_full_width_chars:
-                            non_english_map.append({
-                                'original_text': stripped_line,
-                                'translated_text': lines_without_full_width_chars
-                            })
-
-                        # Replace matched text with spaces, preserving newline characters
-                        replacement_text = ''.join([' ' if c != '\n' else '\n' for c in match.group()])
-                        content = content[:match.start()] + replacement_text + content[match.end():]
-
-                    else:
-                        break
+                # match the whole line as a fallback
+                cls.match_pattern_for_code_file(content, line_number, non_english_map, WHOLE_LINE_PATTERN)
 
         return PrepareForTranslation.aggregate_data(non_english_map)
+
+    @classmethod
+    def match_pattern_for_code_file(cls, content, line_number, non_english_map, pattern):
+        match = re.search(pattern, content, re.DOTALL)
+        if match:
+            matched_content = match.group(1)
+            # print("Matched pattern: ", pattern, matched_content)
+            stripped_line = matched_content.strip()
+            lines_without_full_width_chars = replace_full_width_chars(stripped_line)
+            if lines_without_full_width_chars and not is_english_or_technical(
+                    lines_without_full_width_chars):
+                non_english_map.append(
+                    {
+                        'position': line_number,
+                        'original_text': stripped_line,
+                        'translation_input': lines_without_full_width_chars,
+                        'chunks': find_non_english_chunks(lines_without_full_width_chars),
+                    })
+            elif stripped_line != lines_without_full_width_chars:
+                non_english_map.append({
+                    'position': line_number,
+                    'original_text': stripped_line,
+                    'translated_text': lines_without_full_width_chars
+                })
+
+            # Replace matched text with spaces, preserving newline characters
+            content = content[:match.start()] + '' + content[match.end():]
+
+        return content, match
